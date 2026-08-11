@@ -1,4 +1,4 @@
----
+3---
 name: aao-niw-monitor
 description: Monitor USCIS AAO non-precedent NIW (EB-2, Form I-140) decisions. Fetch new decision PDFs, extract text, classify denial reasons against the Dhanasar framework, and maintain a running dataset plus trend report. Trigger on "run the AAO monitor", "check for new NIW decisions", "classify AAO decisions", or "update the NIW denial report".
 ---
@@ -16,7 +16,7 @@ runs as a separate, explicitly-triggered, batched pass over a queue — never
 1. **Fetch** — `python scripts/fetch_decisions.py --since 2026-01-01` (defaults to since=2026-01-01, until=today, 5 listing pages). New PDFs land in `data/pdfs/`; `data/seen.json` dedupes. The script reads `robots.txt` for the crawl delay, backs off on 429/503, and skips out-of-window PDFs by parsing the date straight out of the filename — no extra request per file.
 2. **Extract** — `python scripts/extract_text.py`. Text files land in `data/text/`. PDFs already carry an OCR layer; the script falls back to Tesseract only if a page is a raw scan. At the end of the run it rebuilds `data/queue.json` — every `data/text/*.txt` that has no matching `data/results/*.json` yet — which is the backlog step 3 consumes. Extraction never classifies anything itself.
 3. **Classify (batched)** — Read `data/queue.json`. If it's empty, skip straight to step 4. Otherwise process it in batches of **~12 decisions per batch** (tune down if the texts are unusually long, up if they're short — the point is amortizing one taxonomy/instructions pass over many decisions instead of paying that overhead per file):
-   - Read the full text of each decision in the batch.
+   - Read the fulI l text of each decision in the batch.
    - Classify all of them together against the schema in `taxonomy.json`, reasoning about the batch as a set.
    - Write one JSON object per decision to `data/results/<stem>.json`.
    - Move on to the next batch. If you stop before the queue is empty (context getting long, user wants to wrap up), that's fine — leave the remainder in place; the next `extract_text.py` run (or a manual re-scan) will regenerate `data/queue.json` with only the still-unclassified stems, so nothing is lost or double-processed.
