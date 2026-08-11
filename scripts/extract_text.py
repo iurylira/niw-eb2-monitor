@@ -6,8 +6,16 @@ usually suffices. If a page yields almost no text (a raw scan), we fall
 back to rasterizing the page and running Tesseract OCR.
 
 Output: data/text/<name>.txt (one file per decision, skips existing).
+
+This step never touches Claude/tokens, so it's safe to run unattended
+(cron/launchd) right after fetch_decisions.py. It does NOT trigger
+classification — it only queues extracted decisions for it. After each
+run, data/queue.json is rebuilt from data/text/*.txt minus data/results/*.json,
+so classification (a separate, batched, Claude-driven step) always has an
+accurate backlog to pull from instead of being invoked synchronously here.
 """
-import io
+import json
+import time
 from pathlib import Path
 
 import pdfplumber
@@ -15,6 +23,8 @@ import pdfplumber
 ROOT = Path(__file__).resolve().parent.parent
 PDF_DIR = ROOT / "data" / "pdfs"
 TXT_DIR = ROOT / "data" / "text"
+RESULTS_DIR = ROOT / "data" / "results"
+QUEUE_FILE = ROOT / "data" / "queue.json"
 MIN_CHARS_PER_PAGE = 200  # below this we assume the text layer is missing
 
 
@@ -42,6 +52,26 @@ def extract(pdf_path: Path) -> str:
     return "\n\n".join(parts)
 
 
+def rebuild_queue() -> list[dict]:
+    """Recompute the classification backlog: every extracted text file that
+    doesn't yet have a matching result. Persisted so the (separate, batched,
+    Claude-driven) classify step doesn't need to rescan directories and so
+    the pending count survives between unattended fetch/extract runs and
+    whenever classification is actually invoked."""
+    classified_stems = {p.stem for p in RESULTS_DIR.glob("*.json")}
+    pending = []
+    for txt_path in sorted(TXT_DIR.glob("*.txt")):
+        if txt_path.stem in classified_stems:
+            continue
+        pending.append({
+            "stem": txt_path.stem,
+            "text_file": str(txt_path.relative_to(ROOT)),
+            "queued": time.strftime("%Y-%m-%d"),
+        })
+    QUEUE_FILE.write_text(json.dumps(pending, indent=2))
+    return pending
+
+
 def main() -> None:
     TXT_DIR.mkdir(parents=True, exist_ok=True)
     pdfs = sorted(PDF_DIR.glob("*.pdf"))
@@ -58,6 +88,9 @@ def main() -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] {pdf_path.name}: {exc}")
     print(f"[done] extracted {done} new file(s) -> {TXT_DIR}")
+
+    pending = rebuild_queue()
+    print(f"[queue] {len(pending)} decision(s) awaiting classification -> {QUEUE_FILE}")
 
 
 if __name__ == "__main__":

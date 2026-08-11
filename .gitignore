@@ -8,6 +8,10 @@ data/text/
 # Dedup index — regenerates from data/pdfs/, not meaningful to diff.
 data/seen.json
 
+# Classification backlog — regenerates from data/text/ minus data/results/,
+# not meaningful to diff. See scripts/extract_text.py.
+data/queue.json
+
 # Classification output: this is your actual research asset. Left OUT of git
 # by default since it's derived from case-specific data (business names,
 # clinic details, projected revenue, etc. even after USCIS redaction).

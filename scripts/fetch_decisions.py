@@ -4,6 +4,9 @@
 Scrapes the AAO decisions listing (uri_1=18 = Form I-140 NIW), finds PDF
 links, and downloads any not already seen within a date window. Maintains
 data/seen.json as a dedupe index so repeated runs only pull new decisions.
+Also checks data/pdfs/ directly before downloading, so a missing/corrupt/
+reset seen.json can't cause an already-downloaded PDF to be silently
+re-fetched and overwritten.
 
 Politeness / good-crawler behavior:
   - Reads robots.txt and honors its Crawl-delay (falls back to a
@@ -44,7 +47,7 @@ LISTING = (
 )
 HEADERS = {
     # Identify yourself politely; USCIS serves this data publicly.
-    "User-Agent": "aao-niw-research/1.0 (personal research; contact: you@example.com)"
+    "User-Agent": "aao-niw-research/1.0 (personal research; contact: iury.lira@gmail.com)"
 }
 ROOT = Path(__file__).resolve().parent.parent
 PDF_DIR = ROOT / "data" / "pdfs"
@@ -136,6 +139,20 @@ def download(session: requests.Session, url: str, dest: Path, base_delay: float)
     dest.write_bytes(resp.content)
 
 
+def load_seen() -> dict:
+    if SEEN_FILE.exists():
+        try:
+            return json.loads(SEEN_FILE.read_text())
+        except json.JSONDecodeError:
+            print(f"[warn] {SEEN_FILE} is corrupt, starting fresh")
+    return {}
+
+
+def save_seen(seen: dict) -> None:
+    SEEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SEEN_FILE.write_text(json.dumps(seen, indent=2, sort_keys=True))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pages", type=int, default=5, help="max listing pages to scan")
@@ -178,6 +195,12 @@ def main() -> None:
             if name in seen:
                 continue
             dest = PDF_DIR / name
+            if dest.exists():
+                # Already on disk even though seen.json doesn't know about it
+                # (e.g. seen.json was deleted/corrupt/reset) — backfill the
+                # index instead of re-downloading and overwriting the file.
+                seen[name] = {"url": url, "fetched": time.strftime("%Y-%m-%d"), "decision_date": str(fdate) if fdate else None}
+                continue
             try:
                 download(session, url, dest, base_delay)
                 seen[name] = {"url": url, "fetched": time.strftime("%Y-%m-%d"), "decision_date": str(fdate) if fdate else None}

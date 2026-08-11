@@ -15,8 +15,11 @@ USCIS listing (uri_1=18) ──> fetch_decisions.py ──> data/pdfs/*.pdf
                                     │
                               data/text/*.txt
                                     │
+                              rebuilds data/queue.json
+                              (texts with no result yet)
+                                    │
                     Claude Code (skill: aao-niw-monitor)
-                    classifies per taxonomy.json
+                    classifies the queue IN BATCHES per taxonomy.json
                                     │
                 data/results/*.json + summary.csv + REPORT.md
 ```
@@ -28,6 +31,14 @@ inside Claude Code, it's covered by your Pro subscription — no separate API
 key or per-token billing. (A standalone `anthropic` SDK script would need an
 API key with its own usage-based billing, so the skill route is the
 cost-efficient one for Pro.)
+
+**Fetch and extract never touch Claude, and classification is not triggered
+by them.** `extract_text.py` only enqueues newly-extracted decisions into
+`data/queue.json`; nothing gets classified until you explicitly run the
+skill, and even then it's processed a batch at a time (~12 decisions per
+pass) instead of one Claude turn per PDF. This means you can fetch/extract
+on a tight cron schedule (cheap, no tokens) while classification stays on
+its own cadence and amortizes overhead across many decisions per call.
 
 ## Setup
 
