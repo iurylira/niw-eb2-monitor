@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "description": "Classification schema for AAO non-precedent NIW (EB-2) decisions. One JSON object per decision.",
+  "fields": {
+    "case_id": "In Re number, e.g. 35760581",
+    "decision_date": "YYYY-MM-DD",
+    "file": "source pdf filename",
+    "occupation": "petitioner's occupation/field as stated",
+    "endeavor_type": "one of: entrepreneur_business_plan | employed_professional | researcher_academic | other",
+    "outcome": "one of: dismissed | sustained | remanded | withdrawn_moot",
+    "eb2_classification_met": "true if advanced degree / exceptional ability was conceded or found met",
+    "dispositive_prong": "1 | 2 | 3 | multiple | none (which Dhanasar prong sank the case; 'none' if sustained)",
+    "prongs_reserved": "list of prongs the AAO declined to reach (Bagamasbad reservation)",
+    "denial_reasons": [
+      "zero or more codes:",
+      "P1_NATIONAL_IMPORTANCE_NOT_SHOWN        - endeavor impact limited to employer/clients/region",
+      "P1_FIELD_VS_ENDEAVOR_CONFLATION         - argued importance of the profession, not the specific endeavor",
+      "P1_ECONOMIC_PROJECTIONS_UNSUPPORTED     - job/revenue projections lacked basis or detail",
+      "P1_DEPRESSED_AREA_ARGUMENT_REJECTED     - HUBZone/opportunity-zone style argument not credited",
+      "P1_SHORTAGE_ARGUMENT_REJECTED           - labor shortage (incl. Schedule A) held not to confer national importance",
+      "P2_POSITIONING_INSUFFICIENT             - education/record/progress insufficient to advance endeavor",
+      "P2_PAST_ACHIEVEMENTS_NOT_PROBATIVE      - citations/letters/experience didn't show ability to advance THIS endeavor",
+      "P2_PLAN_VAGUE_OR_NOT_ACTIONABLE         - no concrete model, funding, customers, or progress",
+      "P3_BALANCE_NOT_IN_US_FAVOR              - benefit of waiving labor cert not shown on balance",
+      "EVIDENCE_GENERIC_LETTERS                - support letters conclusory/templated, little independent weight",
+      "EVIDENCE_INSUFFICIENT_CORROBORATION     - assertions without relevant, probative, credible evidence (Chawathe)",
+      "PROCEDURAL_NEW_EVIDENCE_ON_APPEAL       - late/new evidence not considered or not curative",
+      "PROCEDURAL_OTHER                        - other procedural ground"
+    ],
+    "key_quotes": "up to 2 short (<15 word) verbatim fragments that pin the dispositive reasoning",
+    "lessons": "1-3 bullets: what a future NIW petition should do differently in light of this decision"
+  }
+}

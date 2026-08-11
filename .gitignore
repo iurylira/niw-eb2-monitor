@@ -1,0 +1,26 @@
+# Downloaded source PDFs — USCIS redacts PII but treat as sensitive by default,
+# and there's no reason to version-control binary PDFs anyway.
+data/pdfs/
+
+# Extracted plain text — derived from the PDFs above, same caution applies.
+data/text/
+
+# Dedup index — regenerates from data/pdfs/, not meaningful to diff.
+data/seen.json
+
+# Classification output: this is your actual research asset. Left OUT of git
+# by default since it's derived from case-specific data (business names,
+# clinic details, projected revenue, etc. even after USCIS redaction).
+# If you want history on your classifications, either:
+#   (a) keep this repo private and remove this line, or
+#   (b) track only summary.csv / REPORT.md (aggregate, less identifying)
+#       and keep data/results/*.json ignored.
+data/results/*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
