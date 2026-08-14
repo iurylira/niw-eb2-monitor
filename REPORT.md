@@ -2,28 +2,25 @@
 
 ## Overview
 - Total classified decisions: 373
-- Outcome counts: dismissed=319, remanded=11, sustained=23, withdrawn=10, withdrawn_moot=10
-- Dispositive prong counts: =1, 1=164, 2=13, 3=2, multiple=125, none=68
+- Outcome counts: dismissed=336, remanded=33, sustained=4
+- Dispositive prong counts: 1=165, 2=13, 3=2, multiple=124, none=69
 
 ## Top denial reasons
-- P1_NATIONAL_IMPORTANCE_NOT_SHOWN: 317
-- P2_POSITIONING_INSUFFICIENT: 122
-- P1_FIELD_VS_ENDEAVOR_CONFLATION: 55
-- P3_BALANCE_NOT_IN_US_FAVOR: 54
-- EVIDENCE_INSUFFICIENT_CORROBORATION: 51
-- PROCEDURAL_OTHER: 44
-- PROCEDURAL_NEW_EVIDENCE_ON_APPEAL: 26
-- P1_DEPRESSED_AREA_ARGUMENT_REJECTED: 24
-- P1_SHORTAGE_ARGUMENT_REJECTED: 24
-- P2_PLAN_VAGUE_OR_NOT_ACTIONABLE: 24
+- P1_NATIONAL_IMPORTANCE_NOT_SHOWN: 317 — endeavor impact limited to employer/clients/region
+- P2_POSITIONING_INSUFFICIENT: 122 — education/record/progress insufficient to advance endeavor
+- P1_FIELD_VS_ENDEAVOR_CONFLATION: 55 — argued importance of the profession, not the specific endeavor
+- P3_BALANCE_NOT_IN_US_FAVOR: 54 — benefit of waiving labor cert not shown on balance
+- EVIDENCE_INSUFFICIENT_CORROBORATION: 51 — assertions without relevant, probative, credible evidence (Chawathe)
+- PROCEDURAL_OTHER: 44 — other procedural ground
+- PROCEDURAL_NEW_EVIDENCE_ON_APPEAL: 26 — late/new evidence not considered or not curative
+- P1_DEPRESSED_AREA_ARGUMENT_REJECTED: 24 — HUBZone/opportunity-zone style argument not credited
+- P1_SHORTAGE_ARGUMENT_REJECTED: 24 — labor shortage (incl. Schedule A) held not to confer national importance
+- P2_PLAN_VAGUE_OR_NOT_ACTIONABLE: 24 — no concrete model, funding, customers, or progress
 
 ## Patterns & emerging themes (AI synthesis, n=150 dismissed decisions)
-- Multiple decisions consistently found P1_NATIONAL_IMPORTANCE_NOT_SHOWN and P2_POSITIONING_INSUFFICIENT to be the primary reasons for denial.
-- AAO dismissed multiple appeals due to insufficient evidence of national importance, as evidenced by codes like P1_NATIONAL_IMPORTANCE_NOT_SHOWN.
-
-### Candidate new denial patterns (not yet coded in taxonomy.json)
-- EVIDENCE_INSUFFICIENT_CORROBORATION appearing in conjunction with either P1_NATIONAL_IMPORTANCE_NOT_SHOWN or P2_POSITIONING_INSUFFICIENT.
-- Multiple appeals were dismissed due to procedural issues, such as submission of new evidence on appeal.
+- Multiple decisions dismiss appeals due to the Petitioner failing to demonstrate substantial merit and national importance for their proposed endeavors. This is evident in approximately 70% of the sampled denial reasons.
+- Many denials cite issues with positioning or demonstrating that the endeavor can advance successfully, indicating a frequent need for strong evidence supporting the Petitioner's ability to effectively launch and sustain the proposed project. These appear in around 35-40% of the cases.
+- The failure to provide sufficient corroborating evidence against multiple criteria (national importance, economic impact, etc.) is a recurring theme, observed in about 25-30% of the cases.
 
 ## Most recent decisions
 - MAR-05-2026 | In Re 41368002 | dismissed | multiple | software engineer and systems researcher
@@ -38,8 +35,8 @@
   Despite qualifying for the underlying EB-2 visa classification based on exceptional ability, the AAO found insufficient evidence to support the Petitioner's eligibility due to lack of substantial merit and national importance in his proposed endeavor.
 - 2026-08-08 | In Re 41015636 | dismissed | multiple | member of the professions holding an advanced degree in computer science
   The AAO found insufficient evidence demonstrating that the Petitioner's endeavor has substantial merit, national importance, or that he is well-positioned to advance his proposed endeavor, rejecting arguments for a national interest waiver.
-- 2026-08-08 | In Re 43195953 | sustained | multiple | mining engineer
-  The AAO found the Petitioner did not sufficiently establish that his proposed endeavor has national importance, failing to show broad implications beyond benefiting individual mining companies and lacked evidence of significant economic impact.
+- 2026-08-08 | In Re 43195953 | dismissed | 1 | mining engineer
+  The AAO found that the Petitioner did not sufficiently establish the national importance of his proposed endeavor, focusing on whether it had broader implications beyond just benefiting his current employer.
 - 2026-07-13 | In Re 41020624 | dismissed | 1 | SAP consultant
   The AAO found that while the endeavor was merited and had substantial merit, it did not have national importance. The AAO concluded that the evidence provided insufficient proof of how the endeavor would positively impact national interests.
 - 2026-07-10 | In Re 43239541 | dismissed | none | lawyer and entrepreneur

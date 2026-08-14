@@ -85,7 +85,7 @@ def normalize_classification_payload(payload: dict) -> dict:
         "endeavor_type": str(payload.get("endeavor_type", "")),
         "outcome": str(payload.get("outcome", "")),
         "eb2_classification_met": bool(payload.get("eb2_classification_met", False)),
-        "dispositive_prong": payload.get("dispositive_prong", ""),
+        "dispositive_prong": str(payload.get("dispositive_prong", "")),
         "prongs_reserved": payload.get("prongs_reserved") or [],
         "denial_reasons": payload.get("denial_reasons") or [],
         "key_quotes": payload.get("key_quotes") or [],
@@ -184,6 +184,40 @@ def sync_taxonomy_with_results(
         path.write_text(json.dumps(taxonomy, indent=2) + "\n")
 
     return taxonomy
+
+
+# Every AAO decision ends with an unambiguous "ORDER: The appeal is
+# dismissed/sustained." line -- ground truth for `outcome`, and far more
+# reliable than asking a small model to infer it from the surrounding prose.
+# A 3B model was found (empirically, on this corpus) to persistently confuse
+# "sustained" (petitioner wins) with decisions that merely discuss or
+# reference sustaining the *original officer's* reasoning -- retrying the
+# same prompt twice on one case reproduced the same wrong answer both times.
+# This regex-based override is checked second (order matters, since a
+# withdrawn-for-remand order line always also contains "withdraw"):
+#   dismiss > sustain > remand > withdraw/moot
+# NOTE: the withdrawn_moot branch is untested against this corpus -- every
+# "withdraw" occurrence observed so far co-occurred with "remand" (a
+# withdrawn-for-remand order) and fell through to `remanded` correctly. If a
+# genuine moot-dismissal order line ever surfaces with different phrasing,
+# this branch may need adjusting.
+_ORDER_LINE_RE = re.compile(r"ORDER:\s*(.+?)(?:\n|$)", re.IGNORECASE)
+
+
+def order_line_outcome(text: str) -> str | None:
+    m = _ORDER_LINE_RE.search(text)
+    if not m:
+        return None
+    order_line = m.group(1).lower()
+    if "dismiss" in order_line:
+        return "dismissed"
+    if "sustain" in order_line:
+        return "sustained"
+    if "remand" in order_line:
+        return "remanded"
+    if "withdraw" in order_line or "moot" in order_line:
+        return "withdrawn_moot"
+    return None
 
 
 def _json_extract(text: str) -> dict:
@@ -286,6 +320,13 @@ def classify_batch_with_ollama(batch: list[dict]) -> list[dict]:
 
         payload["file"] = text_path.name
         payload["stem"] = item["stem"]
+
+        # Ground-truth override: trust the decision's own ORDER: line over
+        # the model's outcome field whenever it resolves unambiguously (see
+        # order_line_outcome docstring above for why this exists).
+        ground_truth_outcome = order_line_outcome(text)
+        if ground_truth_outcome and payload.get("outcome") != ground_truth_outcome:
+            payload["outcome"] = ground_truth_outcome
 
         # Sync the taxonomy against this one decision immediately, not once
         # at the end of the whole batch -- a new PDF can surface a genuinely
@@ -448,6 +489,22 @@ def synthesize_patterns_with_ollama(results: list[dict]) -> dict | None:
     return None
 
 
+def _denial_reason_descriptions() -> dict[str, str]:
+    """Map each denial_reasons code to its human-readable description, parsed
+    straight from taxonomy.json's 'CODE - description' entries -- so the
+    report's code list stays in sync with the taxonomy without duplicating
+    the descriptions in a second place."""
+    if not TAXONOMY_FILE.exists():
+        return {}
+    taxonomy = json.loads(TAXONOMY_FILE.read_text())
+    descriptions = {}
+    for entry in taxonomy.get("fields", {}).get("denial_reasons", []) or []:
+        code, sep, desc = entry.partition(" - ")
+        if sep:
+            descriptions[code.strip()] = desc.strip()
+    return descriptions
+
+
 def write_report(results: list[dict]) -> None:
     if not results:
         REPORT_FILE.write_text("# NIW Decision Report\n\nNo classified decisions available.\n")
@@ -477,8 +534,11 @@ def write_report(results: list[dict]) -> None:
         "",
         "## Top denial reasons",
     ]
+    reason_descriptions = _denial_reason_descriptions()
     for reason, count in sorted(reason_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:10]:
-        lines.append(f"- {reason}: {count}")
+        desc = reason_descriptions.get(reason, "")
+        suffix = f" — {desc}" if desc else ""
+        lines.append(f"- {reason}: {count}{suffix}")
 
     synthesis = synthesize_patterns_with_ollama(results)
     if synthesis and synthesis["patterns"]:

@@ -30,6 +30,7 @@ runs as a separate, explicitly-triggered, batched pass over a queue — never
 
 ## Classification rules
 
+- `outcome` has a ground truth in the text itself: every decision ends with an "ORDER: The appeal is dismissed/sustained." line. Read that line directly rather than inferring the outcome from the surrounding prose — a local model on this project was found to persistently mislabel `sustained` vs `dismissed` (confusing "the AAO sustains the appeal" with prose that merely discusses sustaining the *original officer's* denial), even after a targeted prompt fix and a retry. `scripts/classify_queue.py`'s `order_line_outcome()` does this automatically on the Ollama path; do the same read yourself when classifying as Claude Code.
 - Anchor everything to the *Dhanasar* three-prong framework. Identify which prong was dispositive and which prongs the AAO reserved (Bagamasbad reservations matter — a "Prong 1 only" dismissal says nothing about the petitioner's Prong 2/3 strength).
 - Distinguish "field vs. endeavor" conflation (the most common Prong 1 failure) from genuinely local-scope endeavors.
 - Note whether EB-2 classification itself (advanced degree / exceptional ability) was conceded — it almost always is; the fight is the waiver.
