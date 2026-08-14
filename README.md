@@ -5,7 +5,7 @@ An agent that watches USCIS AAO non-precedent decisions for Form I-140 NIW
 denial reasoning against the *Dhanasar* framework — producing a dataset and a
 trend report you can use to strengthen your own NIW petition.
 
-## Architecture
+## Architecture — four layers
 
 ```
 USCIS listing (uri_1=18) ──> fetch_decisions.py ──> data/pdfs/*.pdf
@@ -18,58 +18,131 @@ USCIS listing (uri_1=18) ──> fetch_decisions.py ──> data/pdfs/*.pdf
                               rebuilds data/queue.json
                               (texts with no result yet)
                                     │
-                    Claude Code (skill: aao-niw-monitor)
-                    classifies the queue IN BATCHES per taxonomy.json
-                                    │
+                     ┌──────────────┴───────────────┐
+                     │                               │
+        scripts/classify_queue.py          Claude Code (skill:
+        (local Ollama + Qwen,               aao-niw-monitor)
+         offline, no tokens)                classifies in BATCHES
+                     │                               │
+                     └──────────────┬────────────────┘
+                                     │
                 data/results/*.json + summary.csv + REPORT.md
 ```
 
-Deterministic work (HTTP, PDF, OCR) is plain Python; judgment work
-(classification, lessons, trend synthesis) is done by Claude Code itself via
-the skill in `.claude/skills/aao-niw-monitor/`. Because classification runs
-inside Claude Code, it's covered by your Pro subscription — no separate API
-key or per-token billing. (A standalone `anthropic` SDK script would need an
-API key with its own usage-based billing, so the skill route is the
-cost-efficient one for Pro.)
+Only the classify layer needs judgment/AI; the other three are deterministic
+Python and never touch an LLM.
 
-**Fetch and extract never touch Claude, and classification is not triggered
-by them.** `extract_text.py` only enqueues newly-extracted decisions into
-`data/queue.json`; nothing gets classified until you explicitly run the
-skill, and even then it's processed a batch at a time (~12 decisions per
-pass) instead of one Claude turn per PDF. This means you can fetch/extract
-on a tight cron schedule (cheap, no tokens) while classification stays on
-its own cadence and amortizes overhead across many decisions per call.
+### Layer 1 — Fetch (`scripts/fetch_decisions.py`)
+
+Scrapes the USCIS AAO non-precedent listing and downloads new decision PDFs
+into `data/pdfs/`, deduping against `data/seen.json`. Plain Python, no
+tokens. Polite crawler: reads `robots.txt` for crawl-delay, backs off on
+429/503, adds jitter, and skips out-of-window PDFs by parsing the date out
+of the filename before downloading anything (see "Being a good crawler"
+below).
+
+```bash
+python scripts/fetch_decisions.py --pages 2
+```
+
+### Layer 2 — Extract (`scripts/extract_text.py`)
+
+Pulls text out of each new PDF (`pdfplumber`, falling back to Tesseract OCR
+only for raw scans) into `data/text/*.txt`. Plain Python, no tokens. At the
+end of the run it rebuilds `data/queue.json` — every `data/text/*.txt` that
+has no matching `data/results/*.json` yet. This is the only thing that
+"enqueues" work for layer 3; extraction never classifies anything itself.
+
+```bash
+python scripts/extract_text.py
+```
+
+### Layer 3 — Classify (the only layer that needs judgment) — pick a backend
+
+Reads `data/queue.json` and, for each item, produces
+`data/results/<stem>.json` following the schema in `taxonomy.json`.
+
+**Option A — local Ollama** (`scripts/classify_queue.py`): fully offline,
+no tokens, no Claude Code session required.
+
+```bash
+python scripts/classify_queue.py
+```
+
+It auto-detects the backend: local Ollama + a Qwen model if
+`scripts/ollama_support.py` finds one running, otherwise it falls back to
+marking items `queued_for_claude` for the skill (Option B) to pick up.
+Model selection prefers a smaller **instruct** Qwen model over larger
+**coder** variants — classifying legal text doesn't benefit from a
+code-completion model, and a smaller model finishes a multi-hundred-item
+backlog without tripping the 300s per-call timeout
+(`scripts/ollama_support.py::select_qwen_model`). A single malformed JSON
+response from the model is retried once, then recorded as
+`classification_status: "ollama_error"` rather than aborting the whole run
+— one bad response out of a few hundred shouldn't lose everything else.
+
+**Option B — Claude Code** (`.claude/skills/aao-niw-monitor/`): runs inside
+a Claude Code session, covered by your Pro subscription — no separate API
+key or per-token billing (a standalone `anthropic` SDK script would need
+one). Inside Claude Code, from this folder:
+
+> run the AAO monitor
+
+Claude classifies the queue in batches (~12 decisions/pass) instead of one
+turn per PDF.
+
+Run the test suite for the Ollama path with:
+
+```bash
+python -m unittest discover -s tests
+```
+
+### Layer 4 — Aggregate
+
+Rebuilds `data/results/summary.csv` and `REPORT.md` from everything in
+`data/results/`. Built into `scripts/classify_queue.py` (runs automatically
+at the end of Option A), or done by the skill's own synthesis step for
+Option B. `scripts/build_summary.py` is a standalone CSV-only rebuild if you
+ever need to regenerate `summary.csv` without re-running classification.
 
 ## Setup
 
 ```bash
 pip install requests beautifulsoup4 pdfplumber pytesseract pillow
 # macOS: brew install tesseract     (only needed for the rare raw-scan PDF)
+
+# For Option A (local Ollama) — install Ollama and pull an instruct model:
+#   https://ollama.com/download
+ollama pull qwen2.5:3b
 ```
 
-## Run
-
-Inside Claude Code, from this folder:
-
-> run the AAO monitor
-
-or manually:
+## Run everything
 
 ```bash
 python scripts/fetch_decisions.py --pages 2
 python scripts/extract_text.py
-# then ask Claude Code to classify data/text and rebuild REPORT.md
+python scripts/classify_queue.py    # Option A: local Ollama
+# — or, inside Claude Code —
+# > run the AAO monitor             # Option B: Claude Code skill
 ```
 
 ## Date window
 
-By default `fetch_decisions.py` pulls decisions from **2026-01-01 to today**,
-read straight off each PDF's filename (e.g. `FEB252026_02B5203.pdf` → Feb 25,
-2026) — no per-file request needed to check the date. Override with:
+By default `fetch_decisions.py` **resumes automatically**: `--since` is the
+latest `decision_date` already recorded in `data/seen.json`, minus a 3-day
+overlap buffer (to cover same-day decisions posted out of order across
+runs), or `2026-01-01` if there's no history yet. The date itself is read
+straight off each PDF's filename (e.g. `FEB252026_02B5203.pdf` → Feb 25,
+2026) — no per-file request needed to check it. Override with an explicit
+window when you need one (e.g. a deeper backfill):
 
 ```bash
 python scripts/fetch_decisions.py --since 2026-01-01 --until 2026-08-11
 ```
+
+Or just run `scripts/update.sh`, which chains fetch + extract together and
+always resumes from wherever the last run left off — safe to run as often
+as you like, by hand or from cron.
 
 The script stops paginating early once a whole listing page is older than
 `--since`, on the assumption the listing is newest-first. Pass

@@ -13,7 +13,10 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = ROOT / "data" / "results"
 SUMMARY_FILE = RESULTS_DIR / "summary.csv"
 
-FIELDS = ["case_id", "decision_date", "occupation", "endeavor_type", "outcome", "dispositive_prong", "denial_reasons"]
+FIELDS = [
+    "case_id", "decision_date", "occupation", "endeavor_type", "outcome",
+    "dispositive_prong", "denial_reasons", "reason_summary",
+]
 
 
 def main() -> None:
@@ -34,6 +37,7 @@ def main() -> None:
             "outcome": d.get("outcome", ""),
             "dispositive_prong": d.get("dispositive_prong", ""),
             "denial_reasons": ";".join(d.get("denial_reasons", []) or []),
+            "reason_summary": d.get("reason_summary", ""),
         })
     rows.sort(key=lambda r: r["decision_date"] or "")
 

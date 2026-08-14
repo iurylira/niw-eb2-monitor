@@ -7,7 +7,7 @@
     "file": "source pdf filename",
     "occupation": "petitioner's occupation/field as stated",
     "endeavor_type": "one of: entrepreneur_business_plan | employed_professional | researcher_academic | other",
-    "outcome": "one of: dismissed | sustained | remanded | withdrawn_moot",
+    "outcome": "one of exactly these 4 lowercase strings: dismissed | sustained | remanded | withdrawn_moot. sustained = the AAO SUSTAINS THE APPEAL, meaning it reverses/overturns the denial -- the petitioner WINS. dismissed = the AAO DISMISSES THE APPEAL, meaning it upholds/affirms the denial -- the petitioner LOSES. Do not confuse this with a decision merely discussing or 'sustaining' the original officer's reasoning -- what matters is the AAO's own final ruling on the appeal itself.",
     "eb2_classification_met": "true if advanced degree / exceptional ability was conceded or found met",
     "dispositive_prong": "1 | 2 | 3 | multiple | none (which Dhanasar prong sank the case; 'none' if sustained)",
     "prongs_reserved": "list of prongs the AAO declined to reach (Bagamasbad reservation)",
@@ -25,9 +25,11 @@
       "EVIDENCE_GENERIC_LETTERS                - support letters conclusory/templated, little independent weight",
       "EVIDENCE_INSUFFICIENT_CORROBORATION     - assertions without relevant, probative, credible evidence (Chawathe)",
       "PROCEDURAL_NEW_EVIDENCE_ON_APPEAL       - late/new evidence not considered or not curative",
-      "PROCEDURAL_OTHER                        - other procedural ground"
+      "PROCEDURAL_OTHER                        - other procedural ground",
+      "P1_ECONOMIC_IMPACT_INSUFFICIENT"
     ],
     "key_quotes": "up to 2 short (<15 word) verbatim fragments that pin the dispositive reasoning",
+    "reason_summary": "2-3 plain-English sentences explaining WHY the AAO ruled this way in THIS case -- the actual facts/argument that succeeded or failed, not just the denial_reasons codes. This is what a person skimming the report reads instead of decoding codes.",
     "lessons": "1-3 bullets: what a future NIW petition should do differently in light of this decision"
   }
 }

@@ -31,7 +31,7 @@ import json
 import random
 import re
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urljoin
 from urllib.robotparser import RobotFileParser
@@ -53,6 +53,12 @@ ROOT = Path(__file__).resolve().parent.parent
 PDF_DIR = ROOT / "data" / "pdfs"
 SEEN_FILE = ROOT / "data" / "seen.json"
 DEFAULT_CRAWL_DELAY = 10.0  # seconds, used if robots.txt publishes none
+DEFAULT_SINCE = "2026-01-01"  # fallback --since when seen.json has no history yet
+# When resuming automatically, start a few days before the latest known
+# decision instead of exactly on it -- the AAO listing can have same-day
+# decisions posted out of order across runs, and seen.json/PDF-on-disk
+# checks already make re-scanning this small window a no-op, not a re-download.
+RESUME_OVERLAP_DAYS = 3
 
 FNAME_DATE_RE = re.compile(r"^([A-Z]{3})(\d{2})(\d{4})_")
 MONTHS = {
@@ -153,19 +159,51 @@ def save_seen(seen: dict) -> None:
     SEEN_FILE.write_text(json.dumps(seen, indent=2, sort_keys=True))
 
 
+def latest_seen_date(seen: dict) -> date | None:
+    """Most recent decision_date recorded across data/seen.json, or None if
+    there's no history yet (fresh checkout, or seen.json was reset)."""
+    dates = []
+    for entry in seen.values():
+        raw = entry.get("decision_date")
+        if not raw:
+            continue
+        try:
+            dates.append(datetime.strptime(raw, "%Y-%m-%d").date())
+        except ValueError:
+            continue
+    return max(dates) if dates else None
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pages", type=int, default=5, help="max listing pages to scan")
-    ap.add_argument("--since", type=str, default="2026-01-01", help="earliest decision date (YYYY-MM-DD)")
+    ap.add_argument(
+        "--since", type=str, default=None,
+        help="earliest decision date (YYYY-MM-DD). Default: resume automatically from "
+             f"the latest date in data/seen.json (minus a {RESUME_OVERLAP_DAYS}-day overlap "
+             f"buffer), or {DEFAULT_SINCE} if there's no history yet.",
+    )
     ap.add_argument("--until", type=str, default=None, help="latest decision date (YYYY-MM-DD), default today")
     ap.add_argument("--no-early-stop", action="store_true", help="scan all --pages even past the --since window")
     args = ap.parse_args()
 
-    since = datetime.strptime(args.since, "%Y-%m-%d").date()
-    until = datetime.strptime(args.until, "%Y-%m-%d").date() if args.until else date.today()
-
     PDF_DIR.mkdir(parents=True, exist_ok=True)
     seen = load_seen()
+
+    if args.since:
+        since = datetime.strptime(args.since, "%Y-%m-%d").date()
+    else:
+        latest = latest_seen_date(seen)
+        if latest:
+            since = latest - timedelta(days=RESUME_OVERLAP_DAYS)
+            print(f"[info] no --since given; resuming from latest known decision "
+                  f"({latest}) minus {RESUME_OVERLAP_DAYS}d overlap -> since={since}")
+        else:
+            since = datetime.strptime(DEFAULT_SINCE, "%Y-%m-%d").date()
+            print(f"[info] no --since given and no history in {SEEN_FILE.name}; "
+                  f"defaulting to since={since}")
+    until = datetime.strptime(args.until, "%Y-%m-%d").date() if args.until else date.today()
+
     session = requests.Session()
 
     if not robots_allows(session, LISTING):
