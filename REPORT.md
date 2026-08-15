@@ -5,6 +5,30 @@
 - Outcome counts: dismissed=1101, remanded=102, sustained=21
 - Dispositive prong counts: 1=509, 2=43, 3=6, multiple=366, none=300
 
+## Decision support: where to focus, what to deprioritize
+*(n=1224 AAO appeal decisions, 2025-01 through 2026-07. Caveat: this is an AAO-appeal population — people who already lost at USCIS and appealed — not the general I-140 approval pool, which is presumably much higher. Read this as "what sinks a case that reaches appeal," not overall approval odds.)*
+
+**Spend the most time on Prong 1 (national importance), specifically the endeavor-specificity problem.** Prong 1 is cited in 74.8% of all decisions and is the sole dispositive prong in 41.6% (509 cases), plus a contributing factor in another 29.9% ("multiple"-prong denials). Within Prong 1, the single largest identifiable trap is **P1_FIELD_VS_ENDEAVOR_CONFLATION (15.8%, 193 cases)** — arguing why the *field* matters instead of why *this specific endeavor* matters. Petitions that survive make the case narrow and evidence-backed, not a survey of why the profession in general is important.
+
+**Prong 2 (positioning) is the second-biggest lever, and often the second domino.** 29.2% of decisions cite it (358 cases), and it co-occurs with a Prong 1 failure in the large majority of those — 97 cases fail on Prong 1 + Prong 2 together alone. `P2_PLAN_VAGUE_OR_NOT_ACTIONABLE` (6.0%) and `P2_PAST_ACHIEVEMENTS_NOT_PROBATIVE` (2.9%) suggest the fix is a concrete, milestoned plan for future activity plus achievement evidence that's probative (data, citations, adoption), not just laudatory.
+
+**What NOT to lean on as your primary Prong 1 argument** — these show up mainly as *rejected* shortcuts, not winning strategies:
+- Labor-shortage / Schedule A arguments — rejected in 7.4% of cases (91) when used as a standalone basis.
+- Depressed-area / HUBZone / opportunity-zone arguments — rejected in 8.4% of cases (103).
+- Unsupported economic/job-creation projections — 7.0% (86) fail specifically because projections lacked methodology or basis. If you cite projected jobs/revenue, show the math and its source.
+
+**Don't save your strongest evidence for the appeal.** `PROCEDURAL_NEW_EVIDENCE_ON_APPEAL` appears in 106 cases (8.7%), and of those only 1 was sustained (13 remanded, 92 dismissed) — under 1% success. AAO routinely declines to consider evidence introduced for the first time on appeal. Front-load the complete evidentiary case at initial filing / RFE response; treat the appeal as a legal-error argument, not a second chance to submit proof.
+
+**Don't over-invest in Prong 3 (balance) relative to Prongs 1–2.** It's cited in 12.7% of denials (155) but is the *sole* dispositive prong in only 6 cases total (0.5%) — it's essentially never fatal on its own. It matters as a tie-breaker on an already-borderline case, not as a place to spend disproportionate drafting time.
+
+**Evidence craftsmanship is a cheap, avoidable failure mode.** `EVIDENCE_INSUFFICIENT_CORROBORATION` (12.7%, 156 cases) and `EVIDENCE_GENERIC_LETTERS` (5.1%, 63 cases) are execution problems, not strategy problems — assertions without proof, and boilerplate reference letters that read as generic praise rather than specific, probative testimony. These are within your control regardless of how strong the underlying endeavor is.
+
+**Endeavor framing matters a lot, and business-plan/entrepreneur framing performs worst at AAO.** Sustain rates by endeavor type: `researcher_academic` 9.2% (12/131) vs `employed_professional` 1.1% (9/823) vs `entrepreneur_business_plan` **0.0% (0/172)**. By occupation category, `business_entrepreneurship_management` is 95.2% dismissed with 0% sustained (273 cases), and `legal` (26/26), `education_academia` (0/54), and `finance_accounting` (0/58) show zero sustained appeals in this dataset. `life_sciences_research` is the standout — 8.1% sustained (12/148), 4–8x the rate of most other categories — largely driven by researcher-framed endeavors with concrete deliverables (publications, grants, named initiatives) tied to national impact. If your endeavor can credibly be framed as research/academic rather than a generic business plan, that framing has historically fared far better on appeal.
+
+**Winning cases tend to be comprehensively strong, not single-prong fixes.** 19 of the 21 sustained cases were decided on "multiple" prongs at once (one on Prong 3 alone), not a single prong flipping in isolation. Don't optimize one prong at the expense of the others hoping it alone carries the case.
+
+**No timing signal.** Dismissal rate is flat year over year (89.9% in 2025 vs. 90.2% in 2026 through July) — no evidence AAO is loosening or tightening; don't factor filing timing around a hoped-for policy drift.
+
 ## Top denial reasons
 - P1_NATIONAL_IMPORTANCE_NOT_SHOWN: 915 — endeavor impact limited to employer/clients/region
 - P2_POSITIONING_INSUFFICIENT: 358 — education/record/progress insufficient to advance endeavor
