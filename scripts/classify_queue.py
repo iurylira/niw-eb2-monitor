@@ -232,6 +232,41 @@ def sync_taxonomy_with_results(
 _ORDER_LINE_RE = re.compile(r"ORDER:\s*(.+?)(?:\n|$)", re.IGNORECASE)
 
 
+# Broad occupation buckets for filtering "decisions like mine" (see README
+# roadmap #3). Deliberately deterministic keyword rules, not another AI
+# call -- a batched Ollama pass over ~800 unique occupation strings was
+# tried first and was unreliable at scale (defaulted ~18% to "other"
+# including clear misses like "Data Engineer", "civil engineer and
+# researcher"), the same batch-scale unreliability seen elsewhere in this
+# pipeline. Order matters: more specific categories are checked first so
+# e.g. "biomedical engineer" resolves via ENGINEERING (checked last) only
+# if nothing more specific already matched.
+OCCUPATION_CATEGORY_RULES = [
+    ("software_technology_it", r"\b(software|information technology|\bIT\b|data (engineer|scientist)|cybersecurity|network (engineer|security)|computer science|programmer|developer|full[- ]stack|devops|cloud (engineer|architect)|database administrator|systems? (analyst|engineer|administrator)|web develop|\bUX\b|UI designer|machine learning engineer|AI engineer|artificial intelligence (engineer|research|manufactur)|QA (automation|tester)|IT (program|project) manager|technical (lead|architect)|information security|data (protection|security)|infrastructure specialist|informatics|telecommunications|advanced computing)"),
+    ("healthcare_medicine", r"\b(physician|surgeon|nurse|medical|medicine|dentist|pharmacist|psychiatrist|psycholog|therapist|physiotherap|clinical|nutritionist|dietitian|veterinar|healthcare|hospital|radiolog|anesthesi|dermatolog|pediatric|oncolog|cardiolog|health promoter)"),
+    ("life_sciences_research", r"\b(researcher|scientist|biolog|biostatistic|biomedical|biochemist|geneticist|microbiolog|immunolog|neuroscien|epidemiolog|toxicolog|postdoctoral|post-doctoral|research (fellow|associate|assistant)|academic researcher|chemist|physicist|statistician|mathematician|pharmaceutical scien)"),
+    ("legal", r"\b(lawyer|attorney|legal|law (firm|clerk)|paralegal|counsel\b)"),
+    ("finance_accounting", r"\b(accountant|accounting|financ|\bCPA\b|actuar|auditor|banking|investment|economist|quantitative analyst|operations research analyst|tax professional|treasurer|controller)"),
+    ("education_academia", r"\b(teacher|professor|instructor|educator|academia|lecturer|tutor|principal\b|school (administrator|counselor)|teaching assistant)"),
+    ("arts_media_design", r"\b(artist|musician|music|singer|designer|design\b|film|media|photograph|writer|journalist|actor|actress|dancer|architect\b|fashion|broadcast|communications professional|curator)"),
+    ("agriculture_environmental_science", r"\b(agricultur|agronom|farm|environmental|forestry|horticultur|fisher|veterinary science|soil scien|geolog|sustainab|climate|renewable energy|clean energy)"),
+    ("business_entrepreneurship_management", r"\b(CEO|COO|entrepreneur|founder|business (owner|analyst|intelligence|development|consultant|administrat|operations|continuit)|manager\b|management (consult|analyst)|marketing|sales|project manager|general manager|executive\b|consultant\b|human resources|logistic|supply chain|franchis)"),
+    ("engineering_non_software", r"\b(engineer|engineering|mechanic\b|technician\b|electrician)"),
+]
+
+
+def categorize_occupation(occupation: str) -> str:
+    low = (occupation or "").lower()
+    if not low or "member of the profession" in low or "member ofthe profession" in low \
+       or "individual of exceptional ability" in low or "alien of exceptional ability" in low \
+       or low.startswith("none") or "not specified" in low:
+        return "other"
+    for category, pattern in OCCUPATION_CATEGORY_RULES:
+        if re.search(pattern, low, re.IGNORECASE):
+            return category
+    return "other"
+
+
 def order_line_outcome(text: str) -> str | None:
     m = _ORDER_LINE_RE.search(text)
     if not m:
@@ -368,6 +403,8 @@ def classify_batch_with_ollama(batch: list[dict]) -> list[dict]:
         if ground_truth_date and payload.get("decision_date") != str(ground_truth_date):
             payload["decision_date"] = str(ground_truth_date)
 
+        payload["occupation_category"] = categorize_occupation(payload.get("occupation", ""))
+
         # Sync the taxonomy against this one decision immediately, not once
         # at the end of the whole batch -- a new PDF can surface a genuinely
         # new denial pattern at any point, and a run stopped partway through
@@ -409,34 +446,49 @@ def classify_batch_with_claude(batch: list[dict]) -> list[dict]:
     return results
 
 
-SUMMARY_FIELDS = [
-    "case_id", "decision_date", "occupation", "endeavor_type",
-    "outcome", "dispositive_prong", "denial_reasons", "reason_summary",
-    "key_quotes", "lessons",
-]
+# Internal dict keys (used throughout the codebase, taxonomy.json, and every
+# data/results/*.json file) stay short/technical -- only the CSV's own
+# header row gets human-readable labels, applied at export time. See
+# GLOSSARY.md for what each of these actually means.
+SUMMARY_HEADER_LABELS = {
+    "case_id": "Case ID",
+    "decision_date": "Decision Date",
+    "occupation": "Occupation (as stated)",
+    "occupation_category": "Occupation Category",
+    "endeavor_type": "Endeavor Type",
+    "outcome": "Outcome",
+    "dispositive_prong": "Decisive Prong",
+    "denial_reasons": "Denial Reason Codes",
+    "reason_summary": "Reason (Plain English)",
+    "key_quotes": "Key AAO Quotes",
+    "lessons": "Lessons for Future Petitions",
+}
+SUMMARY_FIELDS = list(SUMMARY_HEADER_LABELS)
 
 
 def write_summary(results: list[dict]) -> None:
     rows = []
     for item in results:
-        rows.append({
-            "case_id": item.get("case_id", ""),
-            "decision_date": item.get("decision_date", ""),
-            "occupation": item.get("occupation", ""),
-            "endeavor_type": item.get("endeavor_type", ""),
-            "outcome": item.get("outcome", ""),
-            "dispositive_prong": item.get("dispositive_prong", ""),
-            "denial_reasons": ";".join(item.get("denial_reasons", []) or []),
-            "reason_summary": item.get("reason_summary", ""),
-            "key_quotes": " | ".join(item.get("key_quotes", []) or []),
-            "lessons": " | ".join(item.get("lessons", []) or []),
-        })
-    rows.sort(key=lambda row: row["decision_date"] or "")
+        sort_key = item.get("decision_date", "")
+        rows.append((sort_key, {
+            SUMMARY_HEADER_LABELS["case_id"]: item.get("case_id", ""),
+            SUMMARY_HEADER_LABELS["decision_date"]: item.get("decision_date", ""),
+            SUMMARY_HEADER_LABELS["occupation"]: item.get("occupation", ""),
+            SUMMARY_HEADER_LABELS["occupation_category"]: item.get("occupation_category", ""),
+            SUMMARY_HEADER_LABELS["endeavor_type"]: item.get("endeavor_type", ""),
+            SUMMARY_HEADER_LABELS["outcome"]: item.get("outcome", ""),
+            SUMMARY_HEADER_LABELS["dispositive_prong"]: item.get("dispositive_prong", ""),
+            SUMMARY_HEADER_LABELS["denial_reasons"]: ";".join(item.get("denial_reasons", []) or []),
+            SUMMARY_HEADER_LABELS["reason_summary"]: item.get("reason_summary", ""),
+            SUMMARY_HEADER_LABELS["key_quotes"]: " | ".join(item.get("key_quotes", []) or []),
+            SUMMARY_HEADER_LABELS["lessons"]: " | ".join(item.get("lessons", []) or []),
+        }))
+    rows.sort(key=lambda pair: pair[0] or "")
 
     with SUMMARY_FILE.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=SUMMARY_FIELDS)
+        writer = csv.DictWriter(f, fieldnames=list(SUMMARY_HEADER_LABELS.values()))
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(row for _, row in rows)
 
 
 # Cap the synthesis prompt to a bounded sample so it stays well inside

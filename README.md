@@ -5,6 +5,11 @@ An agent that watches USCIS AAO non-precedent decisions for Form I-140 NIW
 denial reasoning against the *Dhanasar* framework — producing a dataset and a
 trend report you can use to strengthen your own NIW petition.
 
+New to the terminology, or unsure what a column in `summary.csv` means?
+See **[GLOSSARY.md](GLOSSARY.md)** — covers SCOPS vs. AAO, the Dhanasar
+three-prong test, every denial reason code, and what each CSV column
+actually contains.
+
 ## Architecture — four layers
 
 ```

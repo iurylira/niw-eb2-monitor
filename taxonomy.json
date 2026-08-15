@@ -33,5 +33,9 @@
     "key_quotes": "up to 2 short (<15 word) verbatim fragments that pin the dispositive reasoning",
     "reason_summary": "2-3 plain-English sentences explaining WHY the AAO ruled this way in THIS case -- the actual facts/argument that succeeded or failed, not just the denial_reasons codes. This is what a person skimming the report reads instead of decoding codes.",
     "lessons": "1-3 bullets: what a future NIW petition should do differently in light of this decision"
+  },
+  "derived_fields": {
+    "_note": "Computed by code AFTER classification, not part of the prompt sent to the model (only `fields` above is) -- see GLOSSARY.md for the full explanation of every field, including these.",
+    "occupation_category": "one of: software_technology_it | engineering_non_software | healthcare_medicine | life_sciences_research | business_entrepreneurship_management | finance_accounting | education_academia | legal | arts_media_design | agriculture_environmental_science | other. Deterministic keyword rules over `occupation` (scripts/classify_queue.py::categorize_occupation) -- a batched AI pass was tried first and was unreliable (defaulted ~18% to 'other', missing obvious cases)."
   }
 }

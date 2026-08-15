@@ -1,26 +1,30 @@
 # NIW Decision Report
 
 ## Overview
-- Total classified decisions: 1226
-- Outcome counts: dismissed=1103, remanded=102, sustained=21
-- Dispositive prong counts: 1=510, 2=43, 3=6, multiple=367, none=300
+- Total classified decisions: 1224
+- Outcome counts: dismissed=1101, remanded=102, sustained=21
+- Dispositive prong counts: 1=509, 2=43, 3=6, multiple=366, none=300
 
 ## Top denial reasons
-- P1_NATIONAL_IMPORTANCE_NOT_SHOWN: 916 — endeavor impact limited to employer/clients/region
-- P2_POSITIONING_INSUFFICIENT: 359 — education/record/progress insufficient to advance endeavor
-- P1_FIELD_VS_ENDEAVOR_CONFLATION: 194 — argued importance of the profession, not the specific endeavor
+- P1_NATIONAL_IMPORTANCE_NOT_SHOWN: 915 — endeavor impact limited to employer/clients/region
+- P2_POSITIONING_INSUFFICIENT: 358 — education/record/progress insufficient to advance endeavor
+- P1_FIELD_VS_ENDEAVOR_CONFLATION: 193 — argued importance of the profession, not the specific endeavor
 - EVIDENCE_INSUFFICIENT_CORROBORATION: 156 — assertions without relevant, probative, credible evidence (Chawathe)
 - P3_BALANCE_NOT_IN_US_FAVOR: 155 — benefit of waiving labor cert not shown on balance
 - PROCEDURAL_NEW_EVIDENCE_ON_APPEAL: 106 — late/new evidence not considered or not curative
-- P1_DEPRESSED_AREA_ARGUMENT_REJECTED: 104 — HUBZone/opportunity-zone style argument not credited
-- PROCEDURAL_OTHER: 96 — other procedural ground
+- P1_DEPRESSED_AREA_ARGUMENT_REJECTED: 103 — HUBZone/opportunity-zone style argument not credited
+- PROCEDURAL_OTHER: 95 — other procedural ground
 - P1_SHORTAGE_ARGUMENT_REJECTED: 91 — labor shortage (incl. Schedule A) held not to confer national importance
-- P1_ECONOMIC_PROJECTIONS_UNSUPPORTED: 87 — job/revenue projections lacked basis or detail
+- P1_ECONOMIC_PROJECTIONS_UNSUPPORTED: 86 — job/revenue projections lacked basis or detail
 
 ## Patterns & emerging themes (AI synthesis, n=150 dismissed decisions)
-- Multiple decisions (over 15%) indicate the AAO dismisses appeals due to insufficient evidence showing national importance and economic impact, often conflating field merit with broader societal or regional benefits.
-- Around 10% of decisions are dismissed because the Petitioner fails to establish that their proposed endeavor has substantial merit in the relevant field, despite meeting other criteria such as demonstrating exceptional ability (as evidenced by their advanced degree).
-- A significant portion (about 25%) of the sample dismissals cite issues with the Petitioner not being well-positioned to advance their proposed endeavor or that the work does not meet the second prong of Dhanasar framework, indicating a need for substantial evidence showing career progress and potential impact.
+- {'pattern_id': 'P1_NATIONAL_IMPORTANCE_NOT_SHOWN', 'description': 'The majority of decisions (80.7%) dismiss the appeal due to the Petitioner not showing national importance for their endeavor, often based on insufficient evidence or conflating field and endeavor.'}
+- {'pattern_id': 'PROCEDURAL_NEW_EVIDENCE_ON_APPEAL', 'description': 'About 14.3% of decisions cited procedural issues related to new evidence provided during the appeal process, leading to denial.'}
+- {'pattern_id': 'P2_POSITIONING_INSUFFICIENT', 'description': 'A significant number of denials (19.8%) were due to insufficient showing that the Petitioner was well-positioned to advance their proposed endeavor.'}
+- {'pattern_id': 'PROCEDURAL_OTHER', 'description': 'About 6% of decisions cited procedural issues not specifically covered by known codes, such as invalid signatures or procedural errors.'}
+
+### Candidate new denial patterns (not yet coded in taxonomy.json)
+- {'new_pattern_id': 'EVIDENCE_INSUFFICIENT_OR_INVALID', 'description': 'A small but notable number (4.3%) of denials were due to insufficient evidence presented, including invalidated documents and unsupported claims without valid corroboration.'}
 
 ## Most recent decisions
 - 2026-07-21 | In Re 43549692 | dismissed | 2 | public health specialist (remote Armenian English medical interpreter)
