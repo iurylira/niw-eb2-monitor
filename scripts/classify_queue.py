@@ -20,8 +20,11 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.fetch_decisions import parse_filename_date  # noqa: E402
+
 QUEUE_FILE = ROOT / "data" / "queue.json"
 TAXONOMY_FILE = ROOT / "taxonomy.json"
+TXT_DIR = ROOT / "data" / "text"
 RESULTS_DIR = ROOT / "data" / "results"
 SUMMARY_FILE = RESULTS_DIR / "summary.csv"
 REPORT_FILE = ROOT / "REPORT.md"
@@ -36,6 +39,16 @@ OLLAMA_NUM_CTX = 32768
 # (~4 chars/token, so 80000 chars is ~20k tokens, leaving room for the
 # schema/instructions and the model's own output).
 MAX_TEXT_CHARS = 80000
+
+
+def results_path_for(item: dict) -> Path:
+    """Result JSON path for a queue item, mirroring the <year>/<unknown>
+    subfolder its text_file lives under (itself mirrored from data/pdfs/ by
+    extract_text.py) so data/results/ stays partitioned the same way."""
+    text_path = ROOT / item["text_file"]
+    year_dir = RESULTS_DIR / text_path.parent.relative_to(TXT_DIR)
+    year_dir.mkdir(parents=True, exist_ok=True)
+    return year_dir / f"{item['stem']}.json"
 
 
 def resolve_backend(status: dict[str, bool], preferred: str = "auto") -> str:
@@ -76,6 +89,18 @@ def detect_claude() -> bool:
         return False
 
 
+# A proper denial_reasons code looks like P1_NATIONAL_IMPORTANCE_NOT_SHOWN --
+# found empirically that the model sometimes ignores this convention and
+# writes a full free-text sentence into the array instead (e.g. "the record
+# did not establish..."). Each unique sentence then gets treated as a
+# brand-new "code" by sync_taxonomy_with_results, polluting taxonomy.json
+# (one run added 86 sentence-like entries against ~14 real codes). Since
+# reason_summary already captures the actual reasoning in prose for every
+# decision, dropping non-conforming entries here loses no real information
+# -- it just keeps denial_reasons as actual reusable codes.
+DENIAL_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
 def normalize_classification_payload(payload: dict) -> dict:
     normalized = {
         "case_id": str(payload.get("case_id", "")),
@@ -98,6 +123,9 @@ def normalize_classification_payload(payload: dict) -> dict:
         normalized["lessons"] = [normalized["lessons"]]
     if isinstance(normalized["denial_reasons"], str):
         normalized["denial_reasons"] = [normalized["denial_reasons"]]
+    normalized["denial_reasons"] = [
+        r for r in normalized["denial_reasons"] if DENIAL_CODE_RE.match(str(r).strip())
+    ]
     return normalized
 
 
@@ -328,6 +356,18 @@ def classify_batch_with_ollama(batch: list[dict]) -> list[dict]:
         if ground_truth_outcome and payload.get("outcome") != ground_truth_outcome:
             payload["outcome"] = ground_truth_outcome
 
+        # Same idea for decision_date: AAO filenames encode the decision
+        # date directly (e.g. JUL082026_10B5203.pdf -> 2026-07-08) and this
+        # is already trusted as ground truth elsewhere in the pipeline
+        # (fetch_decisions.py's date-window filtering). Found empirically:
+        # the model sometimes garbles this field -- most often swapping the
+        # filename's month for a different one it read out of the decision
+        # text (e.g. mistaking "JUL" for "JAN"/"MAR" in prose elsewhere in
+        # the document) -- so don't trust its free-form date parsing either.
+        ground_truth_date = parse_filename_date(text_path.name)
+        if ground_truth_date and payload.get("decision_date") != str(ground_truth_date):
+            payload["decision_date"] = str(ground_truth_date)
+
         # Sync the taxonomy against this one decision immediately, not once
         # at the end of the whole batch -- a new PDF can surface a genuinely
         # new denial pattern at any point, and a run stopped partway through
@@ -351,8 +391,7 @@ def classify_batch_with_ollama(batch: list[dict]) -> list[dict]:
         # process is killed or an unforeseen error slips past the retry loop
         # above, everything classified so far up to this point is still on
         # disk and won't be reclassified (or lost) on the next run.
-        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-        (RESULTS_DIR / f"{item['stem']}.json").write_text(json.dumps(payload, indent=2))
+        results_path_for(item).write_text(json.dumps(payload, indent=2))
     return results
 
 
@@ -373,6 +412,7 @@ def classify_batch_with_claude(batch: list[dict]) -> list[dict]:
 SUMMARY_FIELDS = [
     "case_id", "decision_date", "occupation", "endeavor_type",
     "outcome", "dispositive_prong", "denial_reasons", "reason_summary",
+    "key_quotes", "lessons",
 ]
 
 
@@ -388,6 +428,8 @@ def write_summary(results: list[dict]) -> None:
             "dispositive_prong": item.get("dispositive_prong", ""),
             "denial_reasons": ";".join(item.get("denial_reasons", []) or []),
             "reason_summary": item.get("reason_summary", ""),
+            "key_quotes": " | ".join(item.get("key_quotes", []) or []),
+            "lessons": " | ".join(item.get("lessons", []) or []),
         })
     rows.sort(key=lambda row: row["decision_date"] or "")
 
@@ -600,9 +642,22 @@ def main() -> int:
         if new_codes:
             print("[taxonomy] added new denial reasons: " + ", ".join(new_codes))
 
+    # The Ollama path already persisted each result as it was produced (see
+    # classify_batch_with_ollama / results_path_for) -- only the Claude stub
+    # branch still needs writing here, and needs the original queue item to
+    # know which <year> subfolder to mirror (stub payloads carry no
+    # text_file of their own).
+    queue_by_stem = {q["stem"]: q for q in queue}
     for item in results:
-        stem = item.get("stem")
-        out = RESULTS_DIR / f"{stem}.json"
+        if item.get("classification_status") == "classified_by_ollama":
+            continue
+        queue_item = queue_by_stem.get(item.get("stem"), {})
+        if "text_file" in queue_item:
+            out = results_path_for(queue_item)
+        else:
+            year_dir = RESULTS_DIR / "unknown"
+            year_dir.mkdir(parents=True, exist_ok=True)
+            out = year_dir / f"{item.get('stem')}.json"
         out.write_text(json.dumps(item, indent=2))
 
     # Aggregate over everything on disk, not just this run's batch -- the
@@ -610,7 +665,7 @@ def main() -> int:
     # classify_batch_with_ollama), so a prior interrupted run's completed
     # decisions are already there and belong in the summary/report too.
     all_results = [
-        json.loads(p.read_text()) for p in sorted(RESULTS_DIR.glob("*.json"))
+        json.loads(p.read_text()) for p in sorted(RESULTS_DIR.rglob("*.json"))
     ]
     write_summary(all_results)
     write_report(all_results)

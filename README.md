@@ -32,6 +32,16 @@ USCIS listing (uri_1=18) ──> fetch_decisions.py ──> data/pdfs/*.pdf
 Only the classify layer needs judgment/AI; the other three are deterministic
 Python and never touch an LLM.
 
+**Data is partitioned by decision year**: `data/pdfs/<year>/`,
+`data/text/<year>/`, and `data/results/<year>/` (year comes from the
+filename, e.g. `JUL082026_10B5203.pdf` → `2026/`; unparseable dates land in
+an `unknown/` bucket). `extract_text.py` and `classify_queue.py` mirror
+whatever subfolder each source file is already in, so this requires no
+extra bookkeeping. `summary.csv` and `REPORT.md` stay aggregated across all
+years at the top level. If you're migrating an older flat layout, run
+`scripts/migrate_to_year_folders.py` once (idempotent, reports collisions
+instead of overwriting).
+
 ### Layer 1 — Fetch (`scripts/fetch_decisions.py`)
 
 Scrapes the USCIS AAO non-precedent listing and downloads new decision PDFs
@@ -60,7 +70,23 @@ python scripts/extract_text.py
 ### Layer 3 — Classify (the only layer that needs judgment) — pick a backend
 
 Reads `data/queue.json` and, for each item, produces
-`data/results/<stem>.json` following the schema in `taxonomy.json`.
+`data/results/<stem>.json` following the schema in `taxonomy.json`, which
+includes a plain-English `reason_summary` for every decision (not just
+`denial_reasons` codes) and free-text `lessons`.
+
+`outcome` (`dismissed` / `sustained` / `remanded` / `withdrawn_moot`) is
+**not** left entirely to the model's judgment: every AAO decision ends with
+an explicit `ORDER: The appeal is dismissed/sustained...` line, which
+`order_line_outcome()` in `classify_queue.py` regex-parses as ground truth
+and uses to override the model's answer whenever they disagree. This exists
+because a 3B local model was found to persistently confuse "the AAO
+sustains the appeal" (petitioner wins) with prose that merely discusses
+sustaining the *original officer's* denial — a targeted prompt fix reduced
+but didn't eliminate it, so the deterministic override is the actual fix.
+`decision_date` gets the same treatment for the same reason: the filename
+already encodes the true date (used everywhere else in the pipeline for
+date-window filtering), and the model was found to occasionally swap in a
+different month it read out of the decision's prose.
 
 **Option A — local Ollama** (`scripts/classify_queue.py`): fully offline,
 no tokens, no Claude Code session required.
@@ -104,6 +130,15 @@ Rebuilds `data/results/summary.csv` and `REPORT.md` from everything in
 at the end of Option A), or done by the skill's own synthesis step for
 Option B. `scripts/build_summary.py` is a standalone CSV-only rebuild if you
 ever need to regenerate `summary.csv` without re-running classification.
+
+`REPORT.md`'s "Top denial reasons" list pulls each code's description
+straight from `taxonomy.json` (no reclassification needed to keep it
+current), and its "Patterns & emerging themes" section is a separate AI
+synthesis pass (`synthesize_patterns_with_ollama`) that reads across a
+sample of up to 150 dismissed decisions' `reason_summary` text looking for
+cross-cutting patterns the fixed taxonomy codes don't capture on their own,
+plus a "candidate new denial patterns" callout when something recurs that
+isn't well covered by any existing code yet.
 
 ## Setup
 
@@ -204,6 +239,37 @@ git commit -m "aao-niw-monitor: initial pipeline"
 git remote add origin <your-private-repo-url>
 git push -u origin main
 ```
+
+## Roadmap — making this actually useful for your own petition
+
+The dataset today answers "what fails, in general." A petition needs "what
+succeeds, for someone like me." Ranked roughly by payoff:
+
+1. **Mine the wins, not just the losses.** `synthesize_patterns_with_ollama`
+   only ever samples `outcome == "dismissed"` decisions. Add a mirror pass
+   over `sustained` decisions: what evidence/framing shows up across wins?
+2. **Deepen the archive.** A handful of confirmed wins out of a few hundred
+   decisions isn't enough to generalize from. Backfill further back
+   (`fetch_decisions.py --since 2023-01-01 --pages 40`, then extract +
+   classify) so there's a larger win sample to learn from.
+3. **Filter precedent to your own occupation/endeavor.** A mining
+   engineer's winning Prong 1 argument isn't a software engineer's. Add
+   `scripts/find_similar.py "software engineer"` to filter `summary.csv` by
+   `occupation`/`endeavor_type` before reading lessons.
+4. **Stress-test your own draft against the taxonomy.** The most direct use
+   of this dataset is checking, not reading: cross-reference a draft
+   petition against every documented `denial_reasons` pattern before
+   filing, not after a denial.
+5. **Record evidence types, not just outcomes.** `denial_reasons` codes
+   capture AAO's conclusion, not what evidence was actually on the table
+   (independent expert letters vs. employer-only, concrete economic
+   projections vs. none) — the levers a petitioner actually controls.
+6. **Spend real judgment where it's cheap to.** The local model is noisier
+   on `denial_reasons`/`dispositive_prong` than on the now-ground-truth
+   `outcome` field. Once filtered to "decisions like mine" (#3), that
+   subset is small enough to reclassify with Claude Code's own judgment
+   instead of Ollama — full accuracy where it matters, without paying for
+   the whole corpus.
 
 ## Notes
 

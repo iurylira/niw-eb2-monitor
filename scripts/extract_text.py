@@ -5,7 +5,8 @@ USCIS publishes these PDFs with an embedded OCR text layer, so pdfplumber
 usually suffices. If a page yields almost no text (a raw scan), we fall
 back to rasterizing the page and running Tesseract OCR.
 
-Output: data/text/<name>.txt (one file per decision, skips existing).
+Output: data/text/<year>/<name>.txt, mirroring the <year> subfolder each
+source PDF lives under in data/pdfs/ (one file per decision, skips existing).
 
 This step never touches Claude/tokens, so it's safe to run unattended
 (cron/launchd) right after fetch_decisions.py. It does NOT trigger
@@ -58,9 +59,9 @@ def rebuild_queue() -> list[dict]:
     Claude-driven) classify step doesn't need to rescan directories and so
     the pending count survives between unattended fetch/extract runs and
     whenever classification is actually invoked."""
-    classified_stems = {p.stem for p in RESULTS_DIR.glob("*.json")}
+    classified_stems = {p.stem for p in RESULTS_DIR.rglob("*.json")}
     pending = []
-    for txt_path in sorted(TXT_DIR.glob("*.txt")):
+    for txt_path in sorted(TXT_DIR.rglob("*.txt")):
         if txt_path.stem in classified_stems:
             continue
         pending.append({
@@ -74,10 +75,15 @@ def rebuild_queue() -> list[dict]:
 
 def main() -> None:
     TXT_DIR.mkdir(parents=True, exist_ok=True)
-    pdfs = sorted(PDF_DIR.glob("*.pdf"))
+    pdfs = sorted(PDF_DIR.rglob("*.pdf"))
     done = 0
     for pdf_path in pdfs:
-        out = TXT_DIR / (pdf_path.stem + ".txt")
+        # Mirror the PDF's <year>/<unknown> subfolder under data/text/, so
+        # both stay partitioned the same way without extract_text.py needing
+        # to re-derive the date itself.
+        year_dir = TXT_DIR / pdf_path.parent.relative_to(PDF_DIR)
+        year_dir.mkdir(parents=True, exist_ok=True)
+        out = year_dir / (pdf_path.stem + ".txt")
         if out.exists():
             continue
         try:

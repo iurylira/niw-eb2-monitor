@@ -26,7 +26,7 @@ runs as a separate, explicitly-triggered, batched pass over a queue — never
    - Classify all of them together against the schema in `taxonomy.json`, reasoning about the batch as a set.
    - Write one JSON object per decision to `data/results/<stem>.json`.
    - Move on to the next batch. If you stop before the queue is empty (context getting long, user wants to wrap up), that's fine — leave the remainder in place; the next `extract_text.py` run (or a manual re-scan) will regenerate `data/queue.json` with only the still-unclassified stems, so nothing is lost or double-processed.
-4. **Aggregate** — Only needed after the Claude Code branch above (the Ollama script already does this itself). Rebuild `data/results/summary.csv` (one row per decision: case_id, date, occupation, endeavor_type, outcome, dispositive_prong, denial_reasons joined by `;`, reason_summary) and refresh `REPORT.md`.
+4. **Aggregate** — Only needed after the Claude Code branch above (the Ollama script already does this itself). Rebuild `data/results/summary.csv` (one row per decision: case_id, date, occupation, endeavor_type, outcome, dispositive_prong, denial_reasons joined by `;`, reason_summary, key_quotes joined by ` | `, lessons joined by ` | `) and refresh `REPORT.md`.
 
 ## Classification rules
 

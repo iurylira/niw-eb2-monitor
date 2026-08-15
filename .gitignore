@@ -18,8 +18,10 @@ data/queue.json
 # If you want history on your classifications, either:
 #   (a) keep this repo private and remove this line, or
 #   (b) track only summary.csv / REPORT.md (aggregate, less identifying)
-#       and keep data/results/*.json ignored.
-data/results/*.json
+#       and keep data/results/**/*.json ignored.
+# Nested year subfolders (data/results/<year>/*.json) since results are
+# partitioned by decision year, same as data/pdfs/ and data/text/.
+data/results/**/*.json
 
 # Python
 __pycache__/

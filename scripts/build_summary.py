@@ -16,12 +16,13 @@ SUMMARY_FILE = RESULTS_DIR / "summary.csv"
 FIELDS = [
     "case_id", "decision_date", "occupation", "endeavor_type", "outcome",
     "dispositive_prong", "denial_reasons", "reason_summary",
+    "key_quotes", "lessons",
 ]
 
 
 def main() -> None:
     rows = []
-    for path in sorted(RESULTS_DIR.glob("*.json")):
+    for path in sorted(RESULTS_DIR.rglob("*.json")):
         if path.name == "summary.csv":
             continue
         try:
@@ -38,6 +39,8 @@ def main() -> None:
             "dispositive_prong": d.get("dispositive_prong", ""),
             "denial_reasons": ";".join(d.get("denial_reasons", []) or []),
             "reason_summary": d.get("reason_summary", ""),
+            "key_quotes": " | ".join(d.get("key_quotes", []) or []),
+            "lessons": " | ".join(d.get("lessons", []) or []),
         })
     rows.sort(key=lambda r: r["decision_date"] or "")
 

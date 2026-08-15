@@ -26,7 +26,9 @@
       "EVIDENCE_INSUFFICIENT_CORROBORATION     - assertions without relevant, probative, credible evidence (Chawathe)",
       "PROCEDURAL_NEW_EVIDENCE_ON_APPEAL       - late/new evidence not considered or not curative",
       "PROCEDURAL_OTHER                        - other procedural ground",
-      "P1_ECONOMIC_IMPACT_INSUFFICIENT"
+      "P1_ECONOMIC_IMPACT_INSUFFICIENT",
+      "P2_DEPLOYMENT_DIFFERENCE",
+      "P1_SUBSTANTIAL_MERIT_NOT_SUFFICIENT"
     ],
     "key_quotes": "up to 2 short (<15 word) verbatim fragments that pin the dispositive reasoning",
     "reason_summary": "2-3 plain-English sentences explaining WHY the AAO ruled this way in THIS case -- the actual facts/argument that succeeded or failed, not just the denial_reasons codes. This is what a person skimming the report reads instead of decoding codes.",
